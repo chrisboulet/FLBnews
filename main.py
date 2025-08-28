@@ -24,13 +24,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Importer la configuration OpenRouter si disponible
+try:
+    from config_openrouter import get_analysis_config
+    ANALYSIS_CONFIG = get_analysis_config()
+    logger.info(f"OpenRouter configuré avec le modèle: {ANALYSIS_CONFIG.get('openrouter_model', 'N/A')}")
+except ImportError:
+    ANALYSIS_CONFIG = None
+    logger.info("Configuration OpenRouter non trouvée, utilisation du mode par défaut")
+
 class FLBNewsApp:
     def __init__(self):
+        # Utiliser la configuration OpenRouter si disponible, sinon celle de config.py
+        analysis_config = ANALYSIS_CONFIG or getattr(config, 'ANALYSIS_CONFIG', None)
+        
         # Passer les mots-clés et la configuration d'analyse au scraper
         self.scraper = FoodIndustryNewsScraper(
             config.NEWS_SOURCES,
             keywords_config=getattr(config, 'RELEVANCE_KEYWORDS', None),
-            analysis_config=getattr(config, 'ANALYSIS_CONFIG', None)
+            analysis_config=analysis_config
         )
         self.generator = BulletinGenerator(config.BULLETIN_CONFIG.get('template_path'))
         

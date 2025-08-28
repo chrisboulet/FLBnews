@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 import logging
 from typing import List, Dict, Optional
 from dataclasses import dataclass, field
-from translator import NewsTranslator
+from src.translator import NewsTranslator
 
 # Import du nouvel analyseur hybride
 try:
-    from analyzer_engine import HybridAnalysisEngine, AnalysisResult
+    from src.analyzer_engine import HybridAnalysisEngine, AnalysisResult
     ANALYZER_AVAILABLE = True
 except ImportError:
     ANALYZER_AVAILABLE = False
@@ -30,6 +30,7 @@ class NewsItem:
     relevance_to_flb: str = ""
     tags: List[str] = field(default_factory=list)
     relevance_score: float = 0.0
+    image_url: str = ""
 
 class FoodIndustryNewsScraper:
     def __init__(self, sources_config: Dict, keywords_config: Dict = None, analysis_config: Dict = None):
@@ -115,13 +116,32 @@ class FoodIndustryNewsScraper:
                     else:
                         summary = raw_summary[:1800]
                     
+                    # Extraire l'image depuis le flux RSS
+                    image_url = ""
+                    # Chercher dans les enclosures
+                    if hasattr(entry, 'enclosures') and entry.enclosures:
+                        for enclosure in entry.enclosures:
+                            if 'image' in enclosure.get('type', ''):
+                                image_url = enclosure.get('href', '')
+                                break
+                    # Chercher dans media:content ou media:thumbnail
+                    if not image_url:
+                        if hasattr(entry, 'media_content') and entry.media_content:
+                            image_url = entry.media_content[0].get('url', '')
+                        elif hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
+                            image_url = entry.media_thumbnail[0].get('url', '')
+                    # Si toujours pas d'image, on essaiera plus tard avec l'article
+                    if not image_url:
+                        image_url = self._extract_image_from_article(entry.link)
+                    
                     news_item = NewsItem(
                         title=entry.title,
                         url=entry.link,
                         source=source_name,
                         published_date=published,
                         summary=summary,
-                        full_text=article_text
+                        full_text=article_text,
+                        image_url=image_url
                     )
                     
                     news_items.append(news_item)
@@ -205,6 +225,48 @@ class FoodIndustryNewsScraper:
                 return text[:5000]  # Augmenter pour avoir plus de contenu
             except:
                 return ""
+    
+    def _extract_image_from_article(self, url: str) -> str:
+        """Extraire l'image principale d'un article"""
+        try:
+            # D'abord essayer avec newspaper3k
+            article = Article(url)
+            article.download()
+            article.parse()
+            if article.top_image:
+                return article.top_image
+        except:
+            pass
+        
+        # Si \u00e7a ne marche pas, essayer avec BeautifulSoup
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'lxml')
+            
+            # Chercher Open Graph image
+            og_image = soup.find('meta', property='og:image')
+            if og_image and og_image.get('content'):
+                return og_image['content']
+            
+            # Chercher Twitter Card image
+            twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+            if twitter_image and twitter_image.get('content'):
+                return twitter_image['content']
+            
+            # Chercher la premi\u00e8re grande image
+            img = soup.find('img', src=True)
+            if img:
+                img_url = img['src']
+                # Convertir en URL absolue si n\u00e9cessaire
+                if not img_url.startswith('http'):
+                    from urllib.parse import urljoin
+                    img_url = urljoin(url, img_url)
+                return img_url
+        except:
+            pass
+        
+        return ""
     
     def _filter_relevant_news(self, news_items: List[NewsItem]) -> List[NewsItem]:
         # Si l'analyseur avancé est disponible, l'utiliser

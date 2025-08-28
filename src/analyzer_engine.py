@@ -214,7 +214,7 @@ class OllamaAnalyzer:
 class OpenRouterEnricher:
     """Enrichisseur basé sur OpenRouter pour analyse approfondie"""
     
-    def __init__(self, api_key: str = None, model: str = "anthropic/claude-3-haiku"):
+    def __init__(self, api_key: str = None, model: str = "openai/o4"):
         self.api_key = api_key or os.getenv('OPENROUTER_API_KEY')
         self.model = model
         self.base_url = "https://openrouter.ai/api/v1"
@@ -245,14 +245,14 @@ class OpenRouterEnricher:
         Catégorie: {initial_analysis.category}
         Score de pertinence: {initial_analysis.relevance_score * 100:.0f}%
         
-        Fournir une analyse stratégique approfondie:
-        1. Impact concret sur les opérations de FLB
-        2. Opportunités commerciales identifiées
-        3. Risques potentiels à surveiller
-        4. Actions recommandées (spécifiques et actionnables)
-        5. Indicateurs clés à monitorer
+        Fournir une analyse stratégique approfondie en répondant UNIQUEMENT avec un objet JSON valide contenant:
+        {{
+            "business_impact": "Impact concret sur les opérations de FLB",
+            "strategic_insights": "Opportunités et risques identifiés",
+            "recommended_actions": ["action1", "action2", "action3"]
+        }}
         
-        Format: JSON structuré
+        Répondre SEULEMENT avec le JSON, sans texte supplémentaire.
         """
         
         try:
@@ -262,18 +262,42 @@ class OpenRouterEnricher:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "Vous êtes un analyste stratégique spécialisé en distribution alimentaire B2B."},
+                    {"role": "system", "content": "Vous êtes un analyste stratégique spécialisé en distribution alimentaire B2B. Répondez UNIQUEMENT en JSON valide, sans aucun texte supplémentaire."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.4,
                 max_tokens=800,
-                response_format={"type": "json_object"}
+                extra_headers={
+                    "HTTP-Referer": "http://localhost:3000",
+                    "X-Title": "FLB News Bulletin Generator"
+                }
             )
             
             processing_time = time.time() - start_time
             
             # Parser la réponse
-            data = json.loads(response.choices[0].message.content)
+            response_text = response.choices[0].message.content
+            
+            # Essayer de parser le JSON
+            try:
+                # Nettoyer la réponse si nécessaire
+                import re
+                # Essayer de trouver un objet JSON dans la réponse
+                json_match = re.search(r'\{[^}]*\}', response_text, re.DOTALL)
+                if json_match:
+                    data = json.loads(json_match.group())
+                else:
+                    # Essayer de parser directement
+                    data = json.loads(response_text)
+            except (json.JSONDecodeError, AttributeError) as e:
+                logger.warning(f"Failed to parse OpenRouter response as JSON: {e}")
+                logger.debug(f"Response was: {response_text[:200]}...")
+                # Utiliser des valeurs par défaut
+                data = {
+                    "business_impact": "Analyse en cours...",
+                    "strategic_insights": "Données non disponibles",
+                    "recommended_actions": []
+                }
             
             # Enrichir l'analyse existante
             initial_analysis.strategic_insights = data.get('strategic_insights', initial_analysis.strategic_insights)
@@ -312,7 +336,7 @@ class HybridAnalysisEngine:
         if self.config['enable_openrouter']:
             self.openrouter = OpenRouterEnricher(
                 api_key=self.config.get('openrouter_api_key'),
-                model=self.config.get('openrouter_model', 'anthropic/claude-3-haiku')
+                model=self.config.get('openrouter_model', 'openai/gpt-5')
             )
         
         self.cache_dir = os.path.join(os.path.dirname(__file__), '..', '.analysis_cache')

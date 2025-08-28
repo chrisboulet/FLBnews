@@ -443,7 +443,11 @@
         <div class="news-grid">
             {% for item in news_items %}
             <article class="article-card">
+                {% if item.image_url %}
+                <div class="article-image" style="background-image: url('{{ item.image_url }}');"></div>
+                {% else %}
                 <div class="article-image"></div>
+                {% endif %}
                 <div class="article-content">
                     <div class="article-header">
                         <div class="source-badge">
