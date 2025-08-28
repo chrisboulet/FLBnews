@@ -1,0 +1,7 @@
+# Advanced analysis dependencies
+rank-bm25==0.2.2
+sentence-transformers
+ollama==0.5.3
+openai==1.102.0
+numpy
+scikit-learn

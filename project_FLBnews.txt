@@ -1,0 +1,13 @@
+FLB news
+
+une application simple qui produit un bulletin de nouvelles de l'industrie alimentaire pour les employés de FLB Solutions alimentaires.
+
+L'application fait une recherche structurée et utilise des sites prédéterminés pour extraire les nouvelles importantes.
+une fois identifiées, l'outil en extrait les renseignements pertinents pour nos employés et produit un bulletin sommaire indiquant lesdites nouvelles, les sources et pourquoi c'est important pour FLB. 
+
+notre site web est flbsolutions.com, nous sommes un distributeur alimentaire (grossiste) dans la ville de QUébec et on couvre un territoire large de 200 km autour de notre siège social du 275 avenue du semoir, quebec.
+
+Le bulletin sera sous forme html, stocké dans un dossier local, puis synchronisé sur un site sharepoint et expédié par email 
+ un groupr s'abonnés.
+
+
