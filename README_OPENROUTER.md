@@ -7,10 +7,11 @@ OpenRouter avec O4 est maintenant intégré à votre application FLB News.
 ## Configuration
 
 ### 1. Clé API
-Votre clé API OpenRouter est stockée dans le fichier `.env`:
+Votre clé API OpenRouter doit être stockée dans le fichier `.env`:
 ```
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY=votre_clé_api_ici
 ```
+⚠️ **SÉCURITÉ**: Ne jamais committer votre clé API dans le repository. Ajoutez toujours le fichier `.env` à votre `.gitignore`.
 
 ### 2. Modèle configuré
 - **Modèle**: `openai/o4` (migration depuis GPT-5 pour une meilleure stabilité)

@@ -3,247 +3,51 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuration des sources de nouvelles par catégorie
-NEWS_SOURCES = {
-    # CATÉGORIE A - Publications commerciales et industrielles (Priorité maximale)
-    'Canadian Grocer': {
-        'type': 'rss',
-        'url': 'https://canadiangrocer.com/feed',
-        'category': 'A',
-        'priority_multiplier': 1.5,
-        'language': 'en',
-        'description': 'Publication nationale de référence pour l\'industrie épicière'
-    },
-    'Grocery Business': {
-        'type': 'rss',
-        'url': 'https://www.grocerybusiness.ca/feed',
-        'category': 'A',
-        'priority_multiplier': 1.5,
-        'language': 'en',
-        'description': 'Magazine B2B pour détaillants et marketeurs'
-    },
-    'Western Grocer': {
-        'type': 'rss',
-        'url': 'https://westerngrocer.com/feed',
-        'category': 'A',
-        'priority_multiplier': 1.4,
-        'language': 'en',
-        'description': 'Publication spécialisée pour l\'Ouest canadien'
-    },
-    'Food in Canada': {
-        'type': 'rss',
-        'url': 'https://www.foodincanada.com/feed/',
-        'category': 'A',
-        'priority_multiplier': 1.5,
-        'language': 'en',
-        'description': 'Transformation alimentaire et boissons du Canada'
-    },
-    'Foodservice and Hospitality': {
-        'type': 'rss',
-        'url': 'https://www.foodserviceandhospitality.com/feed/',
-        'category': 'A',
-        'priority_multiplier': 1.4,
-        'language': 'en',
-        'description': 'Industrie canadienne de la restauration'
-    },
+# Charger la configuration des sources depuis le fichier externe
+def load_news_sources():
+    """Charger la configuration des sources depuis sources_config.json"""
+    import json
+    import logging
     
-    # CATÉGORIE B - Médias agricoles québécois (Priorité élevée pour FLB)
-    'La Terre de Chez Nous': {
-        'type': 'rss',
-        'url': 'https://www.laterre.ca/feed',
-        'category': 'B',
-        'priority_multiplier': 1.4,
-        'language': 'fr',
-        'description': 'Hebdomadaire de l\'UPA Québec'
-    },
-    'Le Bulletin des Agriculteurs': {
-        'type': 'rss',
-        'url': 'https://www.lebulletin.com/feed',
-        'category': 'B',
-        'priority_multiplier': 1.3,
-        'language': 'fr',
-        'description': 'Plus de 100 ans d\'expertise agricole'
-    },
-    'Le Coopérateur': {
-        'type': 'website',
-        'url': 'https://cooperateur.coop/fr/',
-        'article_selector': 'article',
-        'title_selector': 'h2',
-        'category': 'B',
-        'priority_multiplier': 1.3,
-        'language': 'fr',
-        'description': 'Magazine de Sollio Groupe Coopératif'
-    },
-    'Journal Agricom': {
-        'type': 'rss',
-        'url': 'https://journalagricom.ca/feed',
-        'category': 'B',
-        'priority_multiplier': 1.2,
-        'language': 'fr',
-        'description': 'Perspective francophone sur les enjeux agricoles'
-    },
+    config_file = os.path.join(os.path.dirname(__file__), 'sources_config.json')
     
-    # CATÉGORIE C - Sources gouvernementales et organisationnelles
-    'Agriculture et Agroalimentaire Canada': {
-        'type': 'rss',
-        'url': 'https://www.agr.gc.ca/fra/nouvelles-dagriculture-et-agroalimentaire-canada/?id=1399497793524&fluxrss',
-        'category': 'C',
-        'priority_multiplier': 1.2,
-        'language': 'fr',
-        'description': 'Publications officielles du gouvernement fédéral'
-    },
-    'MAPAQ': {
-        'type': 'website',
-        'url': 'https://www.mapaq.gouv.qc.ca/fr/Regions/Pages/NouvellesRegionales.aspx',
-        'article_selector': '.news-item',
-        'title_selector': 'h3',
-        'category': 'C',
-        'priority_multiplier': 1.3,
-        'language': 'fr',
-        'description': 'Ministère agriculture Québec'
-    },
-    'Agri-Réseau': {
-        'type': 'rss',
-        'url': 'https://www.agrireseau.net/rss/nouvelles',
-        'category': 'C',
-        'priority_multiplier': 1.2,
-        'language': 'fr',
-        'description': 'Plateforme collaborative agricole du Québec'
-    },
-    
-    # CATÉGORIE D - Médias nationaux agricoles
-    'The Western Producer': {
-        'type': 'rss',
-        'url': 'https://www.producer.com/feed/',
-        'category': 'D',
-        'priority_multiplier': 1.0,
-        'language': 'en',
-        'description': 'Nouvelles agricoles nationales'
-    },
-    'Real Agriculture': {
-        'type': 'rss',
-        'url': 'https://www.realagriculture.com/feed/',
-        'category': 'D',
-        'priority_multiplier': 1.0,
-        'language': 'en',
-        'description': 'Plateforme numérique agricole'
-    },
-    
-    # CATÉGORIE E - Médias généralistes avec section alimentaire
-    'Les Affaires': {
-        'type': 'rss',
-        'url': 'https://www.lesaffaires.com/rss/agriculture-et-agroalimentaire',
-        'category': 'E',
-        'priority_multiplier': 1.1,
-        'language': 'fr',
-        'description': 'Économie et agroalimentaire québécois'
-    },
-    'Radio-Canada Économie': {
-        'type': 'website',
-        'url': 'https://ici.radio-canada.ca/economie',
-        'base_url': 'https://ici.radio-canada.ca',
-        'article_selector': 'article',
-        'title_selector': 'h3',
-        'category': 'E',
-        'priority_multiplier': 1.0,
-        'language': 'fr',
-        'description': 'Actualités économiques québécoises'
-    },
-    'Radio-Canada Nouvelles': {
-        'type': 'rss',
-        'url': 'https://ici.radio-canada.ca/rss/4159',
-        'category': 'E',
-        'priority_multiplier': 1.2,
-        'language': 'fr',
-        'description': 'Nouvelles générales Radio-Canada'
-    },
-    'La Presse Canadienne': {
-        'type': 'rss',
-        'url': 'https://www.lapresse.ca/actualites/rss',
-        'category': 'E',
-        'priority_multiplier': 1.2,
-        'language': 'fr',
-        'description': 'Agence de presse nationale'
-    },
-    'Journal de Montréal': {
-        'type': 'rss',
-        'url': 'https://www.journaldemontreal.com/rss.xml',
-        'category': 'E',
-        'priority_multiplier': 1.1,
-        'language': 'fr',
-        'description': 'Grand quotidien québécois'
-    },
-    'Journal de Québec': {
-        'type': 'rss',
-        'url': 'https://www.journaldequebec.com/rss.xml',
-        'category': 'E',
-        'priority_multiplier': 1.2,
-        'language': 'fr',
-        'description': 'Quotidien de la région de Québec'
-    },
-    'TVA Nouvelles': {
-        'type': 'rss',
-        'url': 'https://www.tvanouvelles.ca/rss.xml',
-        'category': 'E',
-        'priority_multiplier': 1.1,
-        'language': 'fr',
-        'description': 'Réseau TVA actualités'
-    },
-    'Global News': {
-        'type': 'rss',
-        'url': 'https://globalnews.ca/feed/',
-        'category': 'E',
-        'priority_multiplier': 1.0,
-        'language': 'en',
-        'description': 'Réseau anglophone national'
-    },
-    'CTV News': {
-        'type': 'rss',
-        'url': 'https://www.ctvnews.ca/rss/ctvnews-ca-top-stories-public-rss-1.822009',
-        'category': 'E',
-        'priority_multiplier': 1.0,
-        'language': 'en',
-        'description': 'Réseau CTV actualités'
-    },
-    'CBC News': {
-        'type': 'rss',
-        'url': 'https://www.cbc.ca/webfeed/rss/rss-topstories',
-        'category': 'E',
-        'priority_multiplier': 1.0,
-        'language': 'en',
-        'description': 'Société Radio-Canada anglophone'
-    },
-    'Le Devoir': {
-        'type': 'rss',
-        'url': 'https://www.ledevoir.com/rss/editoriaux.xml',
-        'category': 'E',
-        'priority_multiplier': 1.1,
-        'language': 'fr',
-        'description': 'Journal de référence québécois'
-    },
-    'The Globe and Mail': {
-        'type': 'rss',
-        'url': 'https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/business/',
-        'category': 'E',
-        'priority_multiplier': 1.0,
-        'language': 'en',
-        'description': 'Journal national canadien'
-    },
-    'National Post': {
-        'type': 'rss',
-        'url': 'https://nationalpost.com/feed',
-        'category': 'E',
-        'priority_multiplier': 1.0,
-        'language': 'en',
-        'description': 'Quotidien national canadien'
-    }
-}
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            
+        # Filtrer seulement les sources activées
+        news_sources = {}
+        for source_name, source_config in config['news_sources'].items():
+            if source_config.get('enabled', True):
+                # Créer une copie de la config sans les champs de contrôle
+                clean_config = {k: v for k, v in source_config.items() 
+                              if k not in ['enabled', 'disabled_reason']}
+                news_sources[source_name] = clean_config
+            else:
+                reason = source_config.get('disabled_reason', 'Non spécifié')
+                logging.info(f"Source désactivée: {source_name} - {reason}")
+                
+        logging.info(f"Configuration chargée: {len(news_sources)} sources actives sur {len(config['news_sources'])} totales")
+        return news_sources
+        
+    except FileNotFoundError:
+        logging.error(f"Fichier de configuration introuvable: {config_file}")
+        return {}
+    except json.JSONDecodeError as e:
+        logging.error(f"Erreur JSON dans {config_file}: {e}")
+        return {}
+    except Exception as e:
+        logging.error(f"Erreur lors du chargement de la configuration: {e}")
+        return {}
+
+# Configuration des sources chargée dynamiquement
+NEWS_SOURCES = load_news_sources()
 
 # Configuration du bulletin
 BULLETIN_CONFIG = {
     'output_directory': os.path.join(os.path.dirname(__file__), 'bulletins'),
     'days_to_scrape': 7,
-    'max_articles': 5,  # Limite à 5 nouvelles les plus pertinentes
+    'max_articles': 7,  # Limite à 7 nouvelles les plus pertinentes
     'max_per_source': 2,  # Maximum 2 nouvelles par source
     'template_path': os.path.join(os.path.dirname(__file__), 'templates', 'ground_news_style.html'),
     'cache_duration_hours': 48  # Cache pour éviter les doublons
@@ -303,34 +107,72 @@ ANALYSIS_CONFIG = {
 
 # Mots-clés et scoring pour FLB Solutions alimentaires
 RELEVANCE_KEYWORDS = {
-    # Cœur de métier (score élevé)
-    'distributeur alimentaire': 10,
-    'grossiste alimentaire': 10,
-    'distribution alimentaire': 10,
-    'food distribution': 10,
-    'food wholesale': 10,
-    'wholesale': 8,
-    'grossiste': 8,
+    # PRIORITÉ CRITIQUE: Importation et commerce international
+    'importation': 15,
+    'import': 15, 
+    'douane': 12,
+    'tarif douanier': 12,
+    'commerce international': 12,
+    'international': 10,
+    'accord commercial': 11,
+    'frontière': 10,
     
-    # Marché géographique prioritaire
-    'québec': 9,
-    'ville de québec': 10,
-    'capitale-nationale': 10,
-    'beauport': 8,
-    'lévis': 8,
-    'sainte-foy': 8,
-    'charlesbourg': 8,
+    # Distribution et concurrence (surveillance)
+    'distributeur alimentaire': 12,
+    'grossiste alimentaire': 12,
+    'distribution alimentaire': 12,
+    'food distribution': 12,
+    'food wholesale': 12,
+    'sysco': 13,
+    'gordon food': 13,
+    'concurrence': 11,
+    'concurrent': 11,
+    'wholesale': 10,
+    'grossiste': 10,
     
-    # Clientèle cible
-    'restauration': 8,
-    'restaurant': 8,
-    'hôtellerie': 8,
-    'HORECA': 9,
-    'épicerie': 7,
-    'détaillant': 7,
-    'food service': 8,
-    'service alimentaire': 8,
-    'institutionnel': 7,
+    # CLIENTÈLE PRIORITAIRE: Restauration
+    'restauration': 12,
+    'restaurant': 12,
+    'foodservice': 12,
+    'service alimentaire': 12,
+    'chef': 9,
+    'menu': 8,
+    'restaurateur': 10,
+    'chaîne resto': 10,
+    
+    # CLIENTÈLE IMPORTANTE: Hôtellerie
+    'hôtellerie': 11,
+    'hôtel': 11,
+    'HORECA': 12,
+    'hébergement': 9,
+    'tourisme': 8,
+    'hospitalité': 9,
+    
+    # PROXIMITÉ GÉOGRAPHIQUE - Zone d'opération immédiate (priorité très élevée)
+    'ville de québec': 14,
+    'quebec city': 14,
+    'capitale-nationale': 13,
+    'beauport': 12,
+    'lévis': 12,
+    'sainte-foy': 12,
+    'charlesbourg': 12,
+    'ancienne-lorette': 11,
+    'saint-augustin': 11,
+    
+    # PROVINCE DE QUÉBEC - Marché élargi stratégique
+    'québec': 10,
+    'quebec': 10,
+    'montréal': 9,
+    'montreal': 9,
+    'sherbrooke': 8,
+    'gatineau': 8,
+    'trois-rivières': 8,
+    'saguenay': 8,
+    'chicoutimi': 8,
+    'rimouski': 7,
+    'drummondville': 7,
+    'granby': 7,
+    'saint-jean': 7,
     
     # Opérations et logistique
     'chaîne d\'approvisionnement': 7,

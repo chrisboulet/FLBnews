@@ -11,6 +11,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from pathlib import Path
+from typing import Optional, Tuple, Dict, Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
@@ -24,27 +25,108 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Importer la configuration OpenRouter si disponible
-try:
-    from config_openrouter import get_analysis_config
-    ANALYSIS_CONFIG = get_analysis_config()
-    logger.info(f"OpenRouter configuré avec le modèle: {ANALYSIS_CONFIG.get('openrouter_model', 'N/A')}")
-except ImportError:
-    ANALYSIS_CONFIG = None
-    logger.info("Configuration OpenRouter non trouvée, utilisation du mode par défaut")
+# Configuration d'analyse avec validation
+def load_analysis_config():
+    """Charger la configuration d'analyse avec validation et fallback"""
+    config = None
+    config_source = "default"
+    
+    # Essayer d'abord config_openrouter
+    try:
+        from config_openrouter import get_analysis_config
+        config = get_analysis_config()
+        config_source = "openrouter"
+        logger.info(f"Configuration OpenRouter chargée: modèle {config.get('openrouter_model', 'N/A')}")
+    except ImportError as e:
+        logger.warning(f"config_openrouter.py introuvable: {e}")
+    except Exception as e:
+        logger.error(f"Erreur lors du chargement de config_openrouter: {e}")
+    
+    # Fallback sur config.py
+    if config is None:
+        try:
+            if hasattr(config, 'ANALYSIS_CONFIG'):
+                config = config.ANALYSIS_CONFIG
+                config_source = "config.py"
+                logger.info("Configuration d'analyse chargée depuis config.py")
+        except Exception as e:
+            logger.warning(f"Erreur config.py: {e}")
+    
+    # Validation de la configuration
+    if config:
+        required_keys = ['mode', 'enable_bm25']
+        missing_keys = [key for key in required_keys if key not in config]
+        if missing_keys:
+            logger.warning(f"Clés manquantes dans la configuration {config_source}: {missing_keys}")
+        else:
+            logger.info(f"Configuration {config_source} validée avec succès")
+    else:
+        logger.warning("Aucune configuration d'analyse disponible, mode basique activé")
+    
+    return config, config_source
+
+ANALYSIS_CONFIG, CONFIG_SOURCE = load_analysis_config()
 
 class FLBNewsApp:
     def __init__(self):
-        # Utiliser la configuration OpenRouter si disponible, sinon celle de config.py
+        # Configuration avec validation
         analysis_config = ANALYSIS_CONFIG or getattr(config, 'ANALYSIS_CONFIG', None)
         
-        # Passer les mots-clés et la configuration d'analyse au scraper
-        self.scraper = FoodIndustryNewsScraper(
-            config.NEWS_SOURCES,
-            keywords_config=getattr(config, 'RELEVANCE_KEYWORDS', None),
-            analysis_config=analysis_config
-        )
-        self.generator = BulletinGenerator(config.BULLETIN_CONFIG.get('template_path'))
+        if analysis_config is None:
+            logger.warning("Mode de compatibilité: utilisation du scoring basique seulement")
+        else:
+            logger.info(f"Mode d'analyse: {analysis_config.get('mode', 'non spécifié')} (source: {CONFIG_SOURCE})")
+        
+        # Validation des dépendances
+        self._validate_dependencies(analysis_config)
+        
+        # Initialiser le scraper avec configuration validée
+        try:
+            self.scraper = FoodIndustryNewsScraper(
+                config.NEWS_SOURCES,
+                keywords_config=getattr(config, 'RELEVANCE_KEYWORDS', None),
+                analysis_config=analysis_config,
+                bulletin_config=config.BULLETIN_CONFIG
+            )
+        except Exception as e:
+            logger.error(f"Erreur lors de l'initialisation du scraper: {e}")
+            raise
+        
+        # Initialiser le générateur de bulletin
+        try:
+            self.generator = BulletinGenerator(config.BULLETIN_CONFIG.get('template_path'))
+        except Exception as e:
+            logger.error(f"Erreur lors de l'initialisation du générateur: {e}")
+            raise
+    
+    def _validate_dependencies(self, analysis_config):
+        """Valider les dépendances selon la configuration"""
+        if not analysis_config:
+            return
+        
+        # Vérifier BM25
+        if analysis_config.get('enable_bm25', False):
+            try:
+                import rank_bm25
+                logger.info("✓ BM25 disponible")
+            except ImportError:
+                logger.warning("✗ rank-bm25 non installé, scoring de base utilisé")
+        
+        # Vérifier Ollama
+        if analysis_config.get('enable_ollama', False):
+            try:
+                import ollama
+                logger.info("✓ Ollama client disponible")
+            except ImportError:
+                logger.warning("✗ ollama non installé, analyse locale désactivée")
+        
+        # Vérifier OpenRouter
+        if analysis_config.get('enable_openrouter', False):
+            api_key = analysis_config.get('openrouter_api_key') or os.getenv('OPENROUTER_API_KEY')
+            if api_key:
+                logger.info("✓ Clé OpenRouter présente")
+            else:
+                logger.warning("✗ Clé OpenRouter manquante, analyse cloud désactivée")
         
     def run_bulletin_generation(self):
         logger.info("Début de la génération du bulletin...")

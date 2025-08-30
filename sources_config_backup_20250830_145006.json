@@ -1,0 +1,241 @@
+{
+  "news_sources": {
+    "Canadian Grocer": {
+      "type": "rss",
+      "url": "https://canadiangrocer.com/feed",
+      "category": "A",
+      "priority_multiplier": 1.5,
+      "language": "en",
+      "description": "Publication nationale de référence pour l'industrie épicière",
+      "enabled": true
+    },
+    "Grocery Business": {
+      "type": "rss", 
+      "url": "https://www.grocerybusiness.ca/feed",
+      "category": "A",
+      "priority_multiplier": 1.5,
+      "language": "en",
+      "description": "Magazine B2B pour détaillants et marketeurs",
+      "enabled": true
+    },
+    "Western Grocer": {
+      "type": "rss",
+      "url": "https://westerngrocer.com/feed", 
+      "category": "A",
+      "priority_multiplier": 1.4,
+      "language": "en",
+      "description": "Publication spécialisée pour l'Ouest canadien",
+      "enabled": true
+    },
+    "Food in Canada": {
+      "type": "rss",
+      "url": "https://www.foodincanada.com/feed/",
+      "category": "A", 
+      "priority_multiplier": 1.5,
+      "language": "en",
+      "description": "Transformation alimentaire et boissons du Canada",
+      "enabled": true
+    },
+    "Foodservice and Hospitality": {
+      "type": "rss",
+      "url": "https://www.foodserviceandhospitality.com/feed/",
+      "category": "A",
+      "priority_multiplier": 1.4,
+      "language": "en", 
+      "description": "Industrie canadienne de la restauration",
+      "enabled": true
+    },
+    "La Terre de Chez Nous": {
+      "type": "rss",
+      "url": "https://www.laterre.ca/feed",
+      "category": "B",
+      "priority_multiplier": 1.4,
+      "language": "fr",
+      "description": "Hebdomadaire de l'UPA Québec",
+      "enabled": true
+    },
+    "Le Bulletin des Agriculteurs": {
+      "type": "rss",
+      "url": "https://www.lebulletin.com/feed",
+      "category": "B",
+      "priority_multiplier": 1.3,
+      "language": "fr", 
+      "description": "Plus de 100 ans d'expertise agricole",
+      "enabled": true
+    },
+    "Le Coopérateur": {
+      "type": "website",
+      "url": "https://cooperateur.coop/fr/",
+      "article_selector": "article",
+      "title_selector": "h2",
+      "category": "B",
+      "priority_multiplier": 1.3,
+      "language": "fr",
+      "description": "Magazine de Sollio Groupe Coopératif",
+      "enabled": true
+    },
+    "Journal Agricom": {
+      "type": "rss",
+      "url": "https://journalagricom.ca/feed",
+      "category": "B",
+      "priority_multiplier": 1.2,
+      "language": "fr",
+      "description": "Perspective francophone sur les enjeux agricoles",
+      "enabled": true
+    },
+    "Agriculture et Agroalimentaire Canada": {
+      "type": "rss", 
+      "url": "https://www.agr.gc.ca/fra/nouvelles-dagriculture-et-agroalimentaire-canada/?id=1399497793524&fluxrss",
+      "category": "C",
+      "priority_multiplier": 1.2,
+      "language": "fr",
+      "description": "Publications officielles du gouvernement fédéral",
+      "enabled": true
+    },
+    "Agri-Réseau": {
+      "type": "rss",
+      "url": "https://www.agrireseau.net/rss/nouvelles",
+      "category": "C",
+      "priority_multiplier": 1.2,
+      "language": "fr",
+      "description": "Plateforme collaborative agricole du Québec",
+      "enabled": true
+    },
+    "The Western Producer": {
+      "type": "rss",
+      "url": "https://www.producer.com/feed/",
+      "category": "D",
+      "priority_multiplier": 1.0,
+      "language": "en",
+      "description": "Nouvelles agricoles nationales",
+      "enabled": true
+    },
+    "Real Agriculture": {
+      "type": "rss", 
+      "url": "https://www.realagriculture.com/feed/",
+      "category": "D",
+      "priority_multiplier": 1.0,
+      "language": "en",
+      "description": "Plateforme numérique agricole",
+      "enabled": true
+    },
+    "Les Affaires": {
+      "type": "rss",
+      "url": "https://www.lesaffaires.com/rss/agriculture-et-agroalimentaire",
+      "category": "E",
+      "priority_multiplier": 1.1,
+      "language": "fr",
+      "description": "Économie et agroalimentaire québécois",
+      "enabled": true
+    },
+    "Radio-Canada Économie": {
+      "type": "website",
+      "url": "https://ici.radio-canada.ca/economie",
+      "base_url": "https://ici.radio-canada.ca",
+      "article_selector": "article",
+      "title_selector": "h3",
+      "category": "E",
+      "priority_multiplier": 1.0,
+      "language": "fr",
+      "description": "Actualités économiques québécoises",
+      "enabled": true
+    },
+    "Radio-Canada Nouvelles": {
+      "type": "rss",
+      "url": "https://ici.radio-canada.ca/rss/4159",
+      "category": "E",
+      "priority_multiplier": 1.2,
+      "language": "fr", 
+      "description": "Nouvelles générales Radio-Canada",
+      "enabled": true
+    },
+    "La Presse Canadienne": {
+      "type": "rss",
+      "url": "https://www.lapresse.ca/actualites/rss",
+      "category": "E",
+      "priority_multiplier": 1.2,
+      "language": "fr",
+      "description": "Agence de presse nationale",
+      "enabled": true
+    },
+    "Journal de Montréal": {
+      "type": "rss",
+      "url": "https://www.journaldemontreal.com/rss.xml",
+      "category": "E",
+      "priority_multiplier": 1.1,
+      "language": "fr",
+      "description": "Grand quotidien québécois",
+      "enabled": true
+    },
+    "Journal de Québec": {
+      "type": "rss",
+      "url": "https://www.journaldequebec.com/rss.xml",
+      "category": "E",
+      "priority_multiplier": 1.2,
+      "language": "fr",
+      "description": "Quotidien de la région de Québec",
+      "enabled": true
+    },
+    "TVA Nouvelles": {
+      "type": "rss",
+      "url": "https://www.tvanouvelles.ca/rss.xml",
+      "category": "E",
+      "priority_multiplier": 1.1,
+      "language": "fr",
+      "description": "Réseau TVA actualités",
+      "enabled": true
+    },
+    "Global News": {
+      "type": "rss",
+      "url": "https://globalnews.ca/feed/",
+      "category": "E",
+      "priority_multiplier": 1.0,
+      "language": "en",
+      "description": "Réseau anglophone national",
+      "enabled": true
+    },
+    "CTV News": {
+      "type": "rss",
+      "url": "https://www.ctvnews.ca/rss/ctvnews-ca-top-stories-public-rss-1.822009",
+      "category": "E",
+      "priority_multiplier": 1.0,
+      "language": "en",
+      "description": "Réseau CTV actualités",
+      "enabled": true
+    },
+    "Le Devoir": {
+      "type": "rss",
+      "url": "https://www.ledevoir.com/rss/editoriaux.xml",
+      "category": "E",
+      "priority_multiplier": 1.1,
+      "language": "fr",
+      "description": "Journal de référence québécois",
+      "enabled": true
+    },
+    "The Globe and Mail": {
+      "type": "rss",
+      "url": "https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/business/",
+      "category": "E",
+      "priority_multiplier": 1.0,
+      "language": "en",
+      "description": "Journal national canadien",
+      "enabled": true
+    },
+    "National Post": {
+      "type": "rss",
+      "url": "https://nationalpost.com/feed",
+      "category": "E", 
+      "priority_multiplier": 1.0,
+      "language": "en",
+      "description": "Quotidien national canadien",
+      "enabled": true
+    }
+  },
+  "categories": {
+    "A": "Publications commerciales et industrielles (Priorité maximale)",
+    "B": "Médias agricoles québécois (Priorité élevée pour FLB)", 
+    "C": "Sources gouvernementales et organisationnelles",
+    "D": "Médias nationaux agricoles",
+    "E": "Médias généralistes avec section alimentaire"
+  }
+}

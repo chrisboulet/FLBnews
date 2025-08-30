@@ -110,7 +110,8 @@ IMPORTANT:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,  # Plus déterministe
-                max_tokens=1000,
+                max_tokens=800,  # Réduit pour économiser les tokens
+                timeout=15,  # Timeout pour éviter les attentes infinies
                 extra_headers={
                     "HTTP-Referer": "http://localhost:3000",
                     "X-Title": "FLB News Bulletin Generator"
@@ -170,31 +171,78 @@ IMPORTANT:
                 relevance_score=0.3
             )
     
-    def analyze_batch(self, articles: List[Dict], max_articles: int = 5) -> List[ArticleAnalysis]:
+    def analyze_batch(self, articles: List[Dict], max_articles: int = 7) -> List[ArticleAnalysis]:
         """
-        Analyser un lot d'articles avec GPT-5
-        Limite le nombre pour contrôler les coûts
+        Analyser un lot d'articles avec O4 de manière optimisée
+        Utilise un retry intelligent et évite les pauses fixes
         """
-        
         results = []
         
-        # Limiter le nombre d'articles à analyser
-        for article in articles[:max_articles]:
-            logger.info(f"Analyse de: {article.get('title', '')[:50]}...")
+        # Pré-trier les articles par score de pertinence si disponible
+        # Buffer: analyser plus d'articles pour avoir des alternatives si certains échouent
+        buffer_size = max_articles + 3  # 3 articles de buffer
+        candidate_articles = articles[:max_articles * 2] if len(articles) > max_articles * 2 else articles
+        
+        sorted_articles = sorted(
+            candidate_articles,
+            key=lambda x: x.get('relevance_score', 0),
+            reverse=True
+        )[:buffer_size]
+        
+        logger.info(f"Buffer d'analyse: {len(sorted_articles)} articles candidats (cible: {max_articles})")
+        
+        for i, article in enumerate(sorted_articles):
+            logger.info(f"Analyse O4 ({i+1}/{len(sorted_articles)}): {article.get('title', '')[:50]}...")
             
-            analysis = self.analyze_article(
+            # Analyser avec retry intelligent
+            analysis = self._analyze_with_retry(
                 title=article.get('title', ''),
                 content=article.get('summary', '') + " " + article.get('full_text', '')[:1000],
                 source=article.get('source', ''),
-                url=article.get('url', '')
+                url=article.get('url', ''),
+                retry_count=3
             )
             
             results.append(analysis)
             
-            # Pause pour éviter le rate limiting
-            time.sleep(0.5)
+            # Arrêter si on a assez d'analyses réussies
+            successful_analyses = [r for r in results if r.relevance_score > 0.1]  # Score minimum
+            if len(successful_analyses) >= max_articles:
+                logger.info(f"Objectif atteint: {len(successful_analyses)} analyses réussies")
+                break
         
-        return results
+        logger.info(f"Analyse terminée: {len(results)} articles traités, {len([r for r in results if r.relevance_score > 0.1])} réussis")
+        return results[:max_articles]  # Retourner seulement le nombre demandé
+    
+    def _analyze_with_retry(self, title: str, content: str, source: str, url: str = "", retry_count: int = 3) -> ArticleAnalysis:
+        """
+        Analyser avec retry intelligent et backoff exponentiel
+        """
+        last_error = None
+        
+        for attempt in range(retry_count):
+            try:
+                return self.analyze_article(title, content, source, url)
+            except Exception as e:
+                last_error = e
+                if attempt < retry_count - 1:
+                    # Backoff exponentiel: 1s, 2s, 4s
+                    wait_time = 2 ** attempt
+                    logger.warning(f"API error (attempt {attempt + 1}), retrying in {wait_time}s: {str(e)}")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"All retry attempts failed for {title[:30]}...")
+        
+        # Fallback si tous les essais échouent
+        logger.warning(f"Falling back to basic analysis for: {title[:50]}...")
+        return ArticleAnalysis(
+            title_fr=title,
+            smart_summary=content[:300] + "...",
+            flb_relevance="Analyse temporairement indisponible - article sélectionné par scoring automatique",
+            relevance_score=0.6,  # Score conservateur
+            category="other",
+            confidence=0.3
+        )
 
 def test_analyzer():
     """Test de l'analyseur OpenRouter"""

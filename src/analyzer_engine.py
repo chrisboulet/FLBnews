@@ -15,10 +15,17 @@ import hashlib
 # Imports conditionnels pour supporter différents modes
 try:
     from rank_bm25 import BM25Okapi
+    import nltk
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
     BM25_AVAILABLE = True
+    NLTK_AVAILABLE = True
 except ImportError:
     BM25_AVAILABLE = False
-    logging.warning("rank-bm25 not installed. BM25 scoring will be disabled.")
+    NLTK_AVAILABLE = False
+    logging.warning("rank-bm25 or nltk not installed. BM25 scoring will use basic tokenization.")
 
 try:
     import ollama
@@ -49,29 +56,61 @@ class AnalysisResult:
     confidence_level: float = 0.0
 
 class BM25Analyzer:
-    """Analyseur rapide basé sur BM25 pour pré-filtrage"""
+    """Analyseur rapide basé sur BM25 pour pré-filtrage avec tokenisation améliorée"""
     
     def __init__(self, keywords_config: Dict[str, int]):
         self.keywords = keywords_config
         self.bm25_index = None
         self.documents = []
+        self.tokenized_docs = []  # Cache des documents tokenisés
+        self.index_hash = None  # Hash pour détecter si l'index doit être reconstruit
+        
+        # Initialiser le tokenizer
+        self.tokenizer = self._init_tokenizer()
         
         if not BM25_AVAILABLE:
             logger.warning("BM25 not available, falling back to keyword scoring")
     
+    def _init_tokenizer(self):
+        """Initialiser le meilleur tokenizer disponible"""
+        if NLTK_AVAILABLE:
+            try:
+                from nltk.tokenize import word_tokenize
+                logger.info("Using NLTK word tokenizer for BM25")
+                return lambda text: word_tokenize(text.lower())
+            except:
+                logger.warning("NLTK tokenizer failed, falling back to basic split")
+        
+        # Fallback: tokenisation améliorée avec regex
+        import re
+        logger.info("Using regex-based tokenizer for BM25")
+        return lambda text: re.findall(r'\b\w+\b', text.lower())
+    
     def build_index(self, documents: List[str]):
-        """Construire l'index BM25 à partir des documents"""
+        """Construire l'index BM25 avec cache intelligent"""
         if not BM25_AVAILABLE:
             return
-            
-        # Tokenisation simple (peut être amélioré avec NLTK/spaCy)
-        tokenized_docs = [doc.lower().split() for doc in documents]
-        self.bm25_index = BM25Okapi(tokenized_docs)
+        
+        # Calculer hash des documents pour détecter les changements
+        import hashlib
+        docs_hash = hashlib.md5(''.join(documents).encode()).hexdigest()
+        
+        # Si l'index existe déjà pour ces documents, le réutiliser
+        if self.index_hash == docs_hash and self.bm25_index is not None:
+            logger.info(f"Reusing cached BM25 index for {len(documents)} documents")
+            return
+        
+        # Tokeniser avec le meilleur tokenizer disponible
+        logger.info(f"Building BM25 index with improved tokenizer for {len(documents)} documents")
+        self.tokenized_docs = [self.tokenizer(doc) for doc in documents]
+        self.bm25_index = BM25Okapi(self.tokenized_docs)
         self.documents = documents
-        logger.info(f"BM25 index built with {len(documents)} documents")
+        self.index_hash = docs_hash
+        
+        logger.info(f"BM25 index built with {len(documents)} documents, avg tokens: {sum(len(doc) for doc in self.tokenized_docs) / len(self.tokenized_docs):.1f}")
     
     def score_document(self, document: str, query_context: str = None) -> float:
-        """Calculer le score de pertinence d'un document"""
+        """Calculer le score de pertinence d'un document avec normalisation"""
         
         # Si pas de BM25, utiliser le scoring par mots-clés
         if not BM25_AVAILABLE or self.bm25_index is None:
@@ -81,7 +120,8 @@ class BM25Analyzer:
         if query_context is None:
             query_context = self._build_flb_query()
         
-        query_tokens = query_context.lower().split()
+        # Tokeniser la requête avec le même tokenizer
+        query_tokens = self.tokenizer(query_context)
         scores = self.bm25_index.get_scores(query_tokens)
         
         # Trouver l'index du document
@@ -91,35 +131,76 @@ class BM25Analyzer:
         except (ValueError, IndexError):
             bm25_score = 0
         
-        # Combiner avec le score de mots-clés pour un résultat hybride
+        # Normaliser le score BM25 (souvent entre 0-20)
+        normalized_bm25 = min(bm25_score / 15, 1.0)  # Normaliser vers 0-1
+        
+        # Score de mots-clés normalisé
         keyword_score = self._keyword_score(document)
         
-        # Pondération: 70% BM25, 30% mots-clés
-        return (bm25_score * 0.7) + (keyword_score * 0.3)
+        # Pondération optimisée: 60% BM25, 40% mots-clés
+        final_score = (normalized_bm25 * 0.6) + (keyword_score * 0.4)
+        
+        return final_score
     
     def _keyword_score(self, document: str) -> float:
-        """Scoring basique par mots-clés (fallback)"""
+        """Scoring amélioré par mots-clés avec TF-IDF simplifié"""
         doc_lower = document.lower()
+        doc_tokens = self.tokenizer(doc_lower) if hasattr(self, 'tokenizer') else doc_lower.split()
+        doc_length = len(doc_tokens)
+        
+        if doc_length == 0:
+            return 0.0
+        
         score = 0.0
         
         for keyword, weight in self.keywords.items():
-            if keyword.lower() in doc_lower:
-                # Compter les occurrences avec diminution logarithmique
-                count = doc_lower.count(keyword.lower())
-                score += weight * (1 + (count - 1) * 0.3)
+            keyword_lower = keyword.lower()
+            
+            # Compter occurrences exactes et partielles
+            exact_count = doc_lower.count(keyword_lower)
+            
+            # Compter correctement en tokens pour cohérence
+            if ' ' in keyword_lower:
+                # Pour les phrases multi-mots, vérifier présence complète
+                if keyword_lower in doc_lower:
+                    # Compter les occurrences de la phrase complète
+                    phrase_count = doc_lower.count(keyword_lower)
+                    tf = phrase_count / max(doc_length, 1)  # Éviter division par zéro
+                    score += weight * tf * 2  # Bonus phrases complètes
+            else:
+                # Pour mots simples, compter dans les tokens
+                token_matches = sum(1 for token in doc_tokens if keyword_lower == token or keyword_lower in token)
+                if token_matches > 0:
+                    tf = token_matches / max(doc_length, 1)  # TF en tokens cohérent
+                    # IDF simplifié: mots rares valent plus
+                    idf = 1 + (len(keyword_lower) / 10)  # Mots longs = plus spécifiques
+                    score += weight * tf * idf
         
-        # Normaliser le score
-        return min(score / 100, 1.0)
+        # Normaliser vers 0-1 avec courbe logarithmique
+        import math
+        normalized = min(math.log(1 + score) / math.log(101), 1.0)
+        return normalized
     
     def _build_flb_query(self) -> str:
-        """Construire une requête représentant les intérêts de FLB"""
-        return """
-        distributeur alimentaire grossiste québec capitale-nationale
-        supply chain approvisionnement logistique livraison
-        restauration hôtellerie HORECA épicerie détaillant
-        produits frais viande volaille produits laitiers surgelés
-        tendances alimentaires innovation durabilité local
-        """
+        """Construire une requête pondérée représentant les intérêts prioritaires de FLB"""
+        # Créer requête avec répétitions pour pondération
+        priority_terms = {
+            'distributeur alimentaire': 3,
+            'grossiste': 3, 
+            'québec': 2,
+            'supply chain': 2,
+            'restauration': 2,
+            'hôtellerie': 2,
+            'produits frais': 1,
+            'innovation': 1,
+            'local': 1
+        }
+        
+        query_parts = []
+        for term, repeat in priority_terms.items():
+            query_parts.extend([term] * repeat)
+        
+        return ' '.join(query_parts)
 
 class OllamaAnalyzer:
     """Analyseur basé sur LLM local via Ollama"""
@@ -351,7 +432,7 @@ class HybridAnalysisEngine:
             'mode': 'economique',  # economique, standard, premium
             'bm25_threshold': 0.3,  # Score minimum pour passer à l'analyse LLM
             'max_ollama_articles': 20,
-            'max_openrouter_articles': 5
+            'max_openrouter_articles': 7
         }
     
     def analyze_batch(self, articles: List[Dict]) -> List[Tuple[Dict, AnalysisResult]]:
